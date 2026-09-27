@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Based Movie Recommendation System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="site-header">
+        <div class="nav-container">
+            <div class="nav-left">
+                <a href="{{ url_for('home') }}" class="nav-brand">
+                    <span class="brand-icon">🎬</span>
+                    <span class="brand-text">Movie<span class="brand-highlight">Rec</span></span>
+                </a>
+                <nav class="nav-links-desktop">
+                    <a href="{{ url_for('home') }}" class="nav-link active">Home</a>
+                    <a href="#genre_section" class="nav-link" id="nav_genres_link">Browse by Genre</a>
+                    <a href="{{ url_for('favorites_page') }}" class="nav-link">My Favorites</a>
+                </nav>
+            </div>
+
+            <div class="nav-right">
+                {% if session.username %}
+                    <div class="user-session-info">
+                        {% if session.is_admin %}
+                            <a href="{{ url_for('admin_dashboard') }}" class="nav-admin-link">🛡️ Admin Dashboard</a>
+                        {% endif %}
+                        <a href="{{ url_for('favorites_page') }}" class="nav-fav-link">⭐ My Favorites</a>
+                        <span class="user-greeting">👋 Welcome, <strong>{{ session.username }}</strong></span>
+                        <a href="{{ url_for('logout') }}" class="nav-auth-link logout-link">Log Out</a>
+                    </div>
+                {% else %}
+                    <div class="auth-links-group">
+                        <a href="{{ url_for('login') }}" class="nav-auth-link">Log In</a>
+                        <span class="nav-divider">|</span>
+                        <a href="{{ url_for('register') }}" class="nav-auth-link register-link">Register</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container main-app-container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-badge">
+                <span class="badge-dot"></span>
+                <span>TF-IDF Vector Space &bull; Content-Based Filtering</span>
+            </div>
+            <h1 class="hero-title">AI-Based Movie Recommendation System</h1>
+            <p class="hero-subtitle">Discover movies similar to your favorites using Content-Based Filtering.</p>
+
+            <!-- Prominent Hero Search Box -->
+            <div class="hero-search-wrapper">
+                <form id="search_form" class="search-form-cinematic">
+                    <div class="search-input-box">
+                        <span class="search-icon">🔍</span>
+                        <input 
+                            type="text" 
+                            id="movie_title" 
+                            name="movie_title" 
+                            class="search-input-cinematic" 
+                            placeholder="Enter a movie title, e.g. Inception, 3 Idiots, Avengers, Dangal..." 
+                            autocomplete="off"
+                        >
+                        <button type="submit" class="btn-recommend-cinematic" id="recommend_btn">
+                            <span>✨ Get Recommendations</span>
+                        </button>
+                    </div>
+
+                    <!-- Hidden select for programmatic genre compatibility -->
+                    <select id="genre_select" class="genre-select" style="display: none;">
+                        <option value="all">All Genres</option>
+                        {% if genres %}
+                            {% for g in genres %}
+                                <option value="{{ g }}">{{ g }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </form>
+            </div>
+        </section>
+
+        <!-- Dynamic Genre Pills Navigation Section -->
+        <section class="genre-pills-section" id="genre_section">
+            <div class="genre-pills-header">
+                <span class="genre-pills-label">Explore by Genre:</span>
+            </div>
+            <div class="genre-pills-wrapper">
+                <div class="genre-pills-scroll" id="genre_pills_bar">
+                    <button type="button" class="genre-pill active" data-genre="all">All</button>
+                    {% if genres %}
+                        {% for g in genres %}
+                            <button type="button" class="genre-pill" data-genre="{{ g }}">{{ g }}</button>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Area: Dynamic Discover / Popular / Recommendations -->
+        <main class="main-content">
+            <section id="results_container" class="results-section" aria-live="polite">
+                <!-- Dynamically populated with Popular Movies from /movies/by-genre/all -->
+            </section>
+        </main>
+    </div>
+
+    <!-- Movie Details Modal -->
+    <div id="movie_modal" class="modal-backdrop" aria-hidden="true" role="dialog" aria-modal="true">
+        <div class="modal-card">
+            <button id="modal_close_btn" class="modal-close" aria-label="Close modal">&times;</button>
+            <div id="modal_content" class="modal-body">
+                <!-- Dynamically injected via JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Client-side JavaScript Controller -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

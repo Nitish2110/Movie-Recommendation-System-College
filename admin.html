@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Movie Recommendation System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container admin-container">
+        <header class="header">
+            <nav class="top-nav">
+                <a href="{{ url_for('home') }}" class="nav-back-link">&larr; Back to Movie Search</a>
+                <div class="user-session-info">
+                    <span class="admin-badge-pill">🛡️ Admin Mode</span>
+                    <span class="user-greeting">Logged in as <strong>{{ session.username }}</strong></span>
+                    <a href="{{ url_for('logout') }}" class="nav-auth-link logout-link">Log Out</a>
+                </div>
+            </nav>
+            <h1>🎬 Admin Movie Management</h1>
+            <p class="subtitle">Manage and curate the SQLite movies catalog</p>
+        </header>
+
+        <main class="main-content">
+            <!-- Flash / Status Alert Message -->
+            {% if message %}
+                <div class="message-card {% if success %}success-card{% else %}error-card{% endif %}">
+                    <h3>{% if success %}Operation Successful{% else %}Notice{% endif %}</h3>
+                    <p>{{ message }}</p>
+                </div>
+            {% endif %}
+
+            <div class="admin-action-bar">
+                <div class="admin-stats">
+                    Total Database Records: <span class="highlight">{{ movies|length }}</span>
+                </div>
+                <button type="button" class="btn-recommend btn-add-movie" id="btn_open_add_modal">
+                    + Add New Movie
+                </button>
+            </div>
+
+            {% if movies and movies|length > 0 %}
+                <div class="admin-table-wrapper">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Poster</th>
+                                <th>Title</th>
+                                <th>Year</th>
+                                <th>Genre</th>
+                                <th>Director</th>
+                                <th>Rating</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in movies %}
+                                <tr id="admin_row_{{ m.id }}">
+                                    <td class="cell-id">#{{ m.id }}</td>
+                                    <td class="cell-poster">
+                                        <div class="admin-mini-poster">
+                                            {% if m.poster_url and m.poster_url != 'nan' and m.poster_url != '' %}
+                                                <img 
+                                                    src="{{ m.poster_url }}" 
+                                                    alt="{{ m.title }}" 
+                                                    loading="lazy"
+                                                    onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'admin-poster-ph\'>🎬</div>';"
+                                                >
+                                            {% else %}
+                                                <div class="admin-poster-ph">🎬</div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="cell-title">
+                                        <strong>{{ m.title }}</strong>
+                                    </td>
+                                    <td>{{ m.release_year if m.release_year else 'N/A' }}</td>
+                                    <td class="cell-genre">{{ m.genre if m.genre else 'N/A' }}</td>
+                                    <td>{{ m.director if m.director else 'N/A' }}</td>
+                                    <td>⭐ {{ m.vote_average if m.vote_average else '0.0' }}</td>
+                                    <td class="cell-actions">
+                                        <button class="btn-action btn-edit" onclick="openEditModal({{ m.id }})">✏️ Edit</button>
+                                        <button class="btn-action btn-delete" onclick="deleteMovie({{ m.id }}, '{{ m.title }}')">🗑️ Delete</button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="message-card empty-favorites-card">
+                    <div class="empty-icon">📂</div>
+                    <h3>No Movies in SQLite Table Yet</h3>
+                    <p>Click "+ Add New Movie" above to add your first movie record to the SQLite database.</p>
+                </div>
+            {% endif %}
+        </main>
+    </div>
+
+    <!-- Modal: Add Movie -->
+    <div id="add_movie_modal" class="modal-backdrop" aria-hidden="true" role="dialog">
+        <div class="modal-card admin-form-card">
+            <button class="modal-close" onclick="closeAddModal()">&times;</button>
+            <h2 class="modal-form-title">+ Add New Movie</h2>
+            <form action="{{ url_for('admin_add_movie_route') }}" method="POST" class="admin-form">
+                <div class="form-grid-2">
+                    <div class="input-group">
+                        <label class="input-label">Title <span style="color:#ef4444;">*</span></label>
+                        <input type="text" name="title" class="search-input" placeholder="Movie Title (required)" required>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Release Year</label>
+                        <input type="number" name="release_year" class="search-input" placeholder="e.g., 2024" min="1880" max="2030">
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="input-group">
+                        <label class="input-label">Genre</label>
+                        <input type="text" name="genre" class="search-input" placeholder="e.g., Action, Sci-Fi, Thriller">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Director</label>
+                        <input type="text" name="director" class="search-input" placeholder="e.g., Christopher Nolan">
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="input-group">
+                        <label class="input-label">Cast</label>
+                        <input type="text" name="cast" class="search-input" placeholder="Top actors separated by comma">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Keywords</label>
+                        <input type="text" name="keywords" class="search-input" placeholder="e.g., superhero, space, dream">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Overview / Plot</label>
+                    <textarea name="overview" class="search-input admin-textarea" placeholder="Movie synopsis or plot overview..." rows="3"></textarea>
+                </div>
+
+                <div class="form-grid-3">
+                    <div class="input-group">
+                        <label class="input-label">Vote Average</label>
+                        <input type="number" step="0.1" name="vote_average" class="search-input" placeholder="0.0 - 10.0" min="0" max="10">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Vote Count</label>
+                        <input type="number" name="vote_count" class="search-input" placeholder="e.g., 5000">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Popularity</label>
+                        <input type="number" step="0.1" name="popularity" class="search-input" placeholder="e.g., 85.5">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Poster URL</label>
+                    <input type="url" name="poster_url" class="search-input" placeholder="https://example.com/poster.jpg">
+                </div>
+
+                <div class="admin-modal-actions">
+                    <button type="button" class="btn-action" onclick="closeAddModal()">Cancel</button>
+                    <button type="submit" class="btn-recommend">Save Movie</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Edit Movie -->
+    <div id="edit_movie_modal" class="modal-backdrop" aria-hidden="true" role="dialog">
+        <div class="modal-card admin-form-card">
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            <h2 class="modal-form-title">✏️ Edit Movie Record</h2>
+            <form id="edit_movie_form" method="POST" class="admin-form">
+                <input type="hidden" id="edit_id" name="id">
+
+                <div class="form-grid-2">
+                    <div class="input-group">
+                        <label class="input-label">Title <span style="color:#ef4444;">*</span></label>
+                        <input type="text" id="edit_title" name="title" class="search-input" required>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Release Year</label>
+                        <input type="number" id="edit_release_year" name="release_year" class="search-input" min="1880" max="2030">
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="input-group">
+                        <label class="input-label">Genre</label>
+                        <input type="text" id="edit_genre" name="genre" class="search-input">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Director</label>
+                        <input type="text" id="edit_director" name="director" class="search-input">
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="input-group">
+                        <label class="input-label">Cast</label>
+                        <input type="text" id="edit_cast" name="cast" class="search-input">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Keywords</label>
+                        <input type="text" id="edit_keywords" name="keywords" class="search-input">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Overview / Plot</label>
+                    <textarea id="edit_overview" name="overview" class="search-input admin-textarea" rows="3"></textarea>
+                </div>
+
+                <div class="form-grid-3">
+                    <div class="input-group">
+                        <label class="input-label">Vote Average</label>
+                        <input type="number" step="0.1" id="edit_vote_average" name="vote_average" class="search-input" min="0" max="10">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Vote Count</label>
+                        <input type="number" id="edit_vote_count" name="vote_count" class="search-input">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Popularity</label>
+                        <input type="number" step="0.1" id="edit_popularity" name="popularity" class="search-input">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Poster URL</label>
+                    <input type="url" id="edit_poster_url" name="poster_url" class="search-input">
+                </div>
+
+                <div class="admin-modal-actions">
+                    <button type="button" class="btn-action" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn-recommend">Update Movie</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin JavaScript Controller -->
+    <script>
+        const addModal = document.getElementById("add_movie_modal");
+        const editModal = document.getElementById("edit_movie_modal");
+
+        document.getElementById("btn_open_add_modal").addEventListener("click", () => {
+            addModal.classList.add("active");
+        });
+
+        function closeAddModal() {
+            addModal.classList.remove("active");
+        }
+
+        function closeEditModal() {
+            editModal.classList.remove("active");
+        }
+
+        async function openEditModal(movieId) {
+            try {
+                const res = await fetch(`/admin/movies/get/${movieId}`);
+                const data = await res.json();
+                if (res.ok && data.status === "success") {
+                    const m = data.movie;
+                    document.getElementById("edit_id").value = m.id;
+                    document.getElementById("edit_title").value = m.title || "";
+                    document.getElementById("edit_release_year").value = m.release_year || "";
+                    document.getElementById("edit_genre").value = m.genre || "";
+                    document.getElementById("edit_director").value = m.director || "";
+                    document.getElementById("edit_cast").value = m.cast || "";
+                    document.getElementById("edit_keywords").value = m.keywords || "";
+                    document.getElementById("edit_overview").value = m.overview || "";
+                    document.getElementById("edit_vote_average").value = m.vote_average || "";
+                    document.getElementById("edit_vote_count").value = m.vote_count || "";
+                    document.getElementById("edit_popularity").value = m.popularity || "";
+                    document.getElementById("edit_poster_url").value = m.poster_url || "";
+
+                    document.getElementById("edit_movie_form").action = `/admin/movies/edit/${m.id}`;
+                    editModal.classList.add("active");
+                } else {
+                    alert(data.message || "Failed to load movie details.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Network error loading movie details.");
+            }
+        }
+
+        async function deleteMovie(movieId, title) {
+            if (!confirm(`Are you sure you want to delete "${title}" (#${movieId}) from the database?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/admin/movies/delete/${movieId}`, { method: "POST" });
+                const data = await res.json();
+                if (res.ok && data.status === "success") {
+                    const row = document.getElementById(`admin_row_${movieId}`);
+                    if (row) {
+                        row.style.opacity = "0";
+                        setTimeout(() => row.remove(), 250);
+                    }
+                } else {
+                    alert(data.message || "Failed to delete movie.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("An error occurred while deleting the movie.");
+            }
+        }
+
+        // Close on backdrop click or Escape
+        window.addEventListener("click", (e) => {
+            if (e.target === addModal) closeAddModal();
+            if (e.target === editModal) closeEditModal();
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                closeAddModal();
+                closeEditModal();
+            }
+        });
+    </script>
+</body>
+</html>

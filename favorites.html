@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Favorites - Movie Recommendation System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container favorites-container">
+        <header class="header">
+            <nav class="top-nav">
+                <a href="{{ url_for('home') }}" class="nav-back-link">&larr; Back to Movie Search</a>
+                <div class="user-session-info">
+                    <span class="user-greeting">👋 <strong>{{ session.username }}</strong></span>
+                    <a href="{{ url_for('logout') }}" class="nav-auth-link logout-link">Log Out</a>
+                </div>
+            </nav>
+            <h1>⭐ My Favorite Movies</h1>
+            <p class="subtitle">Your saved collection of movies</p>
+        </header>
+
+        <main class="main-content">
+            <div id="favorites_status_msg"></div>
+
+            {% if favorites and favorites|length > 0 %}
+                <div class="results-header">
+                    <h2>Saved Titles <span class="highlight">({{ favorites|length }})</span></h2>
+                </div>
+                <div class="recommendations-list favorites-list" id="favorites_list">
+                    {% for movie in favorites %}
+                        <div class="movie-card favorite-card" id="fav_card_{{ movie.movie_id }}">
+                            <div class="movie-poster-wrapper">
+                                {% if movie.poster_url and movie.poster_url != 'nan' and movie.poster_url != '' %}
+                                    <img 
+                                        src="{{ movie.poster_url }}" 
+                                        alt="{{ movie.title }} Poster" 
+                                        class="movie-poster" 
+                                        loading="lazy"
+                                        onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'poster-placeholder\'><span>🎬</span><small>No Poster</small></div>';"
+                                    >
+                                {% else %}
+                                    <div class="poster-placeholder">
+                                        <span>🎬</span>
+                                        <small>No Poster</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="movie-info">
+                                <div class="movie-title-row">
+                                    <h3 class="movie-title">{{ movie.title }}</h3>
+                                    <span class="movie-year">({{ movie.release_year if movie.release_year else 'N/A' }})</span>
+                                </div>
+                                <p class="movie-meta"><strong>Genre:</strong> {{ movie.genre if movie.genre else 'Not available' }}</p>
+                                <p class="movie-meta"><strong>Director:</strong> {{ movie.director if movie.director else 'Not available' }}</p>
+                                <p class="movie-meta"><strong>Cast:</strong> {{ movie.cast if movie.cast else 'Not available' }}</p>
+                            </div>
+
+                            <div class="fav-action-wrapper">
+                                <button 
+                                    class="btn-remove-fav" 
+                                    onclick="removeFavoriteMovie({{ movie.movie_id }}, '{{ movie.title }}')"
+                                    title="Remove from favorites"
+                                >
+                                    🗑️ Remove
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="message-card empty-favorites-card">
+                    <div class="empty-icon">🎬⭐</div>
+                    <h3>No Favorites Saved Yet</h3>
+                    <p>You haven't added any favorite movies to your collection. Search for movies and click on them to add them to your favorites!</p>
+                    <div style="margin-top: 16px;">
+                        <a href="{{ url_for('home') }}" class="btn-recommend" style="display: inline-block; text-decoration: none; padding: 10px 24px;">
+                            Explore & Search Movies
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </main>
+    </div>
+
+    <!-- Client-side script for removing favorites -->
+    <script>
+        async function removeFavoriteMovie(movieId, movieTitle) {
+            if (!confirm(`Remove "${movieTitle}" from your favorites?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/favorites/remove', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ movie_id: movieId })
+                });
+
+                const data = await response.json();
+                if (response.ok && data.status === 'success') {
+                    const card = document.getElementById(`fav_card_${movieId}`);
+                    if (card) {
+                        card.style.opacity = '0';
+                        card.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            card.remove();
+                            // If no cards remain, reload to show empty state
+                            const remaining = document.querySelectorAll('.favorite-card');
+                            if (remaining.length === 0) {
+                                window.location.reload();
+                            }
+                        }, 250);
+                    }
+                } else {
+                    alert(data.message || 'Could not remove favorite.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('An error occurred while removing the favorite.');
+            }
+        }
+    </script>
+</body>
+</html>
